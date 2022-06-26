@@ -2,6 +2,74 @@ version: "3"
 
 services:
   #--------------------------------------------------------------------------
+  # nginx
+  #--------------------------------------------------------------------------
+  nginx:
+    container_name: ${ENV}-nginx
+    build:
+      context: ./services/nginx
+      args:
+        - CHANGE_SOURCE=${CHANGE_SOURCE}
+        - PHP_UPSTREAM_CONTAINER=${NGINX_PHP_UPSTREAM_CONTAINER}
+        - PHP_UPSTREAM_PORT=${NGINX_PHP_UPSTREAM_PORT}
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    volumes:
+      - ./services/nginx/logs/nginx/:/var/log/nginx
+      - ./services/nginx/sites/:/etc/nginx/sites-available
+      - ./services/nginx/ssl/:/etc/nginx/ssl
+      # - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ${APP_CODE_PATH_HOST}:/var/www/site
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    # environment:
+    #   - BACKEND_API_DOMAIN=${BACKEND_API_DOMAIN}
+    working_dir: /var/www/site
+    tty: true
+    # depends_on:
+    #   - php-fpm
+    networks:
+      - frontend
+      - backend
+
+  #--------------------------------------------------------------------------
+  # php-fpm
+  #--------------------------------------------------------------------------
+  php-fpm:
+    container_name: ${ENV}-php-pfm
+    build:
+      context: ./services/php-fpm
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+        - INSTALL_PCNTL=${PHP_INSTALL_PCNTL}
+        - INSTALL_OPCACHE=${PHP_INSTALL_OPCACHE}
+        - INSTALL_ZIP=${PHP_INSTALL_ZIP}
+        - INSTALL_REDIS=${PHP_INSTALL_REDIS}
+        - INSTALL_REDIS_VERSION=${PHP_INSTALL_REDIS_VERSION}
+        - INSTALL_MONGODB=${PHP_INSTALL_MONGODB}
+        - INSTALL_MONGODB_VERSION=${PHP_INSTALL_MONGODB_VERSION}
+        - INSTALL_MEMCACHED=${PHP_INSTALL_MEMCACHED}
+        - INSTALL_MEMCACHED_VERSION=${PHP_INSTALL_MEMCACHED_VERSION}
+        - INSTALL_SWOOLE=${PHP_INSTALL_SWOOLE}
+        - INSTALL_SWOOLE_VERSION=${PHP_INSTALL_SWOOLE_VERSION}
+        - INSTALL_YAF=${PHP_INSTALL_YAF}
+        - INSTALL_YAF_VERSION=${PHP_INSTALL_YAF_VERSION}
+        - INSTALL_XUNSEARCH=${PHP_INSTALL_XUNSEARCH}
+        - INSTALL_COMPOSER=${PHP_INSTALL_COMPOSER}
+    ports:
+      - 9000:9000
+    volumes:
+      - ./services/php-fpm/conf-${PHP_VERSION}/php.ini:/usr/local/etc/php/php.ini
+      - ./services/php-fpm/conf-${PHP_VERSION}/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      - ./services/php-fpm/conf-${PHP_VERSION}/php-fpm.d:/usr/local/etc/php-fpm.d
+      - ${APP_CODE_PATH_HOST}:/var/www/site
+    networks:
+      - backend
+
+  #--------------------------------------------------------------------------
   # MySQL 5.7
   #--------------------------------------------------------------------------
   mysql57:
@@ -23,6 +91,32 @@ services:
     ports:
       - 3357:3306
     # command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - backend
+
+  #--------------------------------------------------------------------------
+  # MySQL 8.0
+  #--------------------------------------------------------------------------
+  mysql80:
+    # image: "${ENV}/mysql:80"
+    container_name: ${ENV}-mysql80
+    build:
+      context: ./services/mysql
+      args:
+        - MYSQL_VERSION=8.0
+    ports:
+      - 3380:3306
+    volumes:
+      - ${DATA_PATH_HOST}/data/mysql/8.0/data:/var/lib/mysql
+      - ${MYSQL_ENTRYPOINT_INITDB}:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --innodb_use_native_aio=0 --lower-case-table-names=2
+    restart: always
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - TIMEZONE=${TIMEZONE}
     networks:
       - backend
   
