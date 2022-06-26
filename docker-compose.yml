@@ -25,6 +25,24 @@ services:
     # command: --default-authentication-plugin=mysql_native_password
     networks:
       - backend
+  
+  #--------------------------------------------------------------------------
+  # Redis
+  #--------------------------------------------------------------------------
+  redis:
+    image: "redis:${REDIS_VERSION}-alpine"
+    container_name: ${ENV}-redis
+    build:
+      context: ./services/redis
+      args:
+        - REDIS_VERSION=${REDIS_VERSION}
+    ports:
+      - ${REDIS_PORT}:6379
+    volumes:
+      - ${DATA_PATH_HOST}/redis/6.2/data:/data
+    restart: always
+    networks:
+      - backend
 
 networks:
   frontend:
